@@ -1,8 +1,8 @@
-package it.micro;
+package it.micro.saga;
 
 import java.util.Map;
 
-import static it.micro.Action.STATUS_KEY;
+import static it.micro.saga.Action.STATUS_KEY;
 
 public record Request(Status status, Information information, Map<String, Object> data, Map<String, Object> result) {
     public Request update(Status status) {
@@ -10,8 +10,16 @@ public record Request(Status status, Information information, Map<String, Object
     }
 
     public Request update(Map<String, Object> params) {
-        Status status = Status.valueOf((String) params.get(STATUS_KEY));
-        if (this.status != Status.PENDING || this.status != status) {
+        Object object = params.get(STATUS_KEY);
+        Status status;
+        if (object instanceof String text) {
+            status = Status.valueOf(text);
+        } else if (object instanceof Status s) {
+            status = s;
+        } else {
+            throw new IllegalArgumentException(String.format("invalid status object %s", object));
+        }
+        if (this.status != Status.PENDING && this.status != status) {
             throw new IllegalStateException("Invalid status " + this.status);
         }
         return new Request(status, information, data, params);

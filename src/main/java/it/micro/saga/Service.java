@@ -1,18 +1,13 @@
-package it.micro;
+package it.micro.saga;
 
 import java.time.LocalDateTime;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static it.micro.Action.ACTION_KEY;
-import static it.micro.Action.SENDER_KEY;
+import static it.micro.saga.Action.*;
+import static it.micro.saga.Transport.TRANSACTION_ID;
 
 public interface Service extends Transport.Handler {
 
@@ -29,6 +24,7 @@ public interface Service extends Transport.Handler {
         private final String name;
         private final Transport transport;
         private final Map<String, Action.Factory> factories;
+        String TOPIC_TRANSACTION_REQUEST_RESULT = "seller.transaction.result.create";
 
         public Reactive(String name, Transport transport, Map<String, Action.Factory> factories) {
             this.name = name;
@@ -47,6 +43,7 @@ public interface Service extends Transport.Handler {
             try {
                 execute(transactionId, action, params);
             } catch (Exception ex) {
+                System.out.println("Error : " + ex.getMessage());
                 return Optional.empty();
             }
             return Optional.of(transactionId);
@@ -55,15 +52,14 @@ public interface Service extends Transport.Handler {
         private void execute(String transactionId, String action, Map<String, Object> params) {
             Action.Factory factory = factories.get(action);
             if (factory == null) {
-                System.out.println("No such action: " + action);
-                return;
+                throw new IllegalArgumentException("Action '" + action + "' not defined");
             }
             Transaction transaction = new Transaction(transactionId, factory, params);
             try {
+                transactions.put(transactionId, transaction);
                 if (transaction.isReady()) {
                     transaction.execute(transport);
                 }
-                transactions.put(transactionId, transaction);
             } catch (Exception ex) {
                 transactions.put(transactionId, transaction.update(Status.FAILURE));
             }
@@ -81,8 +77,8 @@ public interface Service extends Transport.Handler {
 
         @Override
         public void handle(String topicName, Transport.TransactionMessage message) {
+            String transactionId = message.id().toString();
             try {
-                String transactionId = message.id().toString();
                 Map<String, Object> params = message.payload();
                 if (transactions.containsKey(transactionId)) {
                     Transaction transaction = transactions.get(transactionId);
@@ -97,8 +93,15 @@ public interface Service extends Transport.Handler {
                     String action = (String) params.get(ACTION_KEY);
                     execute(transactionId, action, params);
                 } else {
-                    System.out.println("Skip: " + message);
+                    System.out.println("Skip  : " + message);
                 }
+            } catch (Exception ex) {
+                System.out.println("Error : " + ex.getMessage());
+                transport.publish(TOPIC_TRANSACTION_REQUEST_RESULT,
+                        Map.of(ERROR_KEY, ex.getMessage(),
+                                STATUS_KEY, Status.FAILURE,
+                                TRANSACTION_ID, transactionId,
+                                SENDER_KEY, name()));
             } finally {
                 message.acknowledge();
             }
@@ -182,6 +185,7 @@ public interface Service extends Transport.Handler {
 
             private void execute(Transport transport) {
                 if (status.get().equals(Status.READY)) {
+                    status.set(Status.PENDING);
                     action.preRequests();
                     for (Request req : requests()) {
                         Request.Information information = req.information();
@@ -190,7 +194,6 @@ public interface Service extends Transport.Handler {
                     }
                     action.postRequests();
                 }
-                status.set(Status.PENDING);
             }
         }
     }
