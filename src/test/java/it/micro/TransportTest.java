@@ -9,30 +9,31 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @DisplayName("Шина")
-class TrunkTest {
-    private Transport trunk;
+class TransportTest {
+    private Transport transport;
 
     @BeforeEach
     void setUp() {
-        trunk = new Transport.Memory();
+        transport = new Transport.Memory(Executors.newSingleThreadExecutor());
     }
 
     @Test
     void workflow() {
         List<Map<String, Object>> messages = new ArrayList<>();
-        new UniqueConsumer(trunk, "test", messages);
-        new UniqueConsumer(trunk, "test", messages);
-        new UniqueConsumer(trunk, "test", messages);
+        new UniqueConsumer(transport, "test", messages);
+        new UniqueConsumer(transport, "test", messages);
+        new UniqueConsumer(transport, "test", messages);
         for (int i = 0; i < 1000; i++) {
             messages.add(Map.of(Transport.TRANSACTION_ID, UUID.randomUUID().toString(), "data", "test" + i));
         }
         for (Map<String, Object> message : messages) {
-            trunk.publish("test", message);
+            transport.publish("test", message);
         }
     }
 

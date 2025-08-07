@@ -8,9 +8,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 
 public interface Transport {
-    String TOPIC_NAME = "topic";
     String TRANSACTION_ID = "transaction_id";
 
     void register(String groupId, String topicName, Handler handler);
@@ -41,6 +41,11 @@ public interface Transport {
         private final Map<String, Map<String, Long>> offsets = new HashMap<>();
         private final Map<String, Set<String>> groups = new HashMap<>();
         private final Map<KeyGroup, Handler> handlers = new HashMap<>();
+        private final ExecutorService executor;
+
+        public Memory(ExecutorService executor) {
+            this.executor = executor;
+        }
 
         @Override
         public void register(String groupId, String topicName, Handler handler) {
@@ -72,7 +77,10 @@ public interface Transport {
                 Long offset = offsetsMap.getOrDefault(topicName, 0L);
                 for (int i = Math.toIntExact(offset); i < buket.size(); i++) {
                     TransactionMessage message = buket.get(i);
-                    handler.handle(topicName, new OffsetMessage(message, () -> offsetsMap.put(topicName, offset + 1)));
+                    executor.submit(() -> {
+                        System.out.printf("[%s:%9s] %s%n", message.id(), groupId, message.payload());
+                        handler.handle(topicName, new OffsetMessage(message, () -> offsetsMap.put(topicName, offset + 1)));
+                    });
                 }
             }
         }

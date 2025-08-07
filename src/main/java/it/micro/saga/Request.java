@@ -1,7 +1,9 @@
 package it.micro.saga;
 
+import java.util.HashMap;
 import java.util.Map;
 
+import static it.micro.saga.Action.SENDER_KEY;
 import static it.micro.saga.Action.STATUS_KEY;
 
 public record Request(Status status, Information information, Map<String, Object> data, Map<String, Object> result) {
@@ -25,7 +27,18 @@ public record Request(Status status, Information information, Map<String, Object
         return new Request(status, information, data, params);
     }
 
+    public Request update(Status status, String sender) {
+        Map<String, Object> map = new HashMap<>(data);
+        map.put(SENDER_KEY, sender);
+        return new Request(status, information, Map.copyOf(map), result);
+    }
+
     public record Information(String serviceName, String sendTopic, String receiveTopic) {
 
+    }
+
+    @Override
+    public String toString() {
+        return information.serviceName + ":" + status.toString();
     }
 }

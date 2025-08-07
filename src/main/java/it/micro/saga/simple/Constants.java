@@ -5,10 +5,19 @@ public interface Constants {
     String ORDER_PRODUCT_TYPE = "product-type";
     String ORDER_PRODUCT_ID = "product-id";
     String ORDER_ADDITIONS = "additions";
+    String ORDER_ADDITIONS_PRICES = "additions-prices";
+    String ORDER_PRODUCT_PRICE = "product-price";
+    String ORDER_SUM = "sum";
+    String PAYMENT_METHOD = "payment-method";
+    String PAYMENT_RESULT = "payment-status";
+    String PAYMENT_ID = "payment-id";
+    String WAREHOUSE_PRODUCT = "warehouse-product";
+    String WAREHOUSE_ADDITIONS = "warehouse-additions";
 
     String ACTION_ORDER = "order";
     String ACTION_CREATE = "create";
     String ACTION_READY = "ready";
+    String ACTION_ROLLBACK = "rollback";
 
     /**
      * Заказ создан
