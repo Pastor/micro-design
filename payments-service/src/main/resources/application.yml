@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: payments-service
+  r2dbc:
+    url: r2dbc:postgresql://postgres:5432/event-sourcing
+    username: postgres
+    password: ${POSTGRES_PASSWORD:postgres}
+    properties:
+      schema: payments
+  kafka:
+    bootstrap-servers: kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: payments-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: it.micro.tickets.event,it.micro.payments.event
+
+axon:
+  serializer:
+    general: jackson
+    events: jackson
+    messages: jackson
+  axonserver:
+    enabled: false
+  eventhandling:
+    processors:
+      payments:
+        mode: subscribing
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    root: INFO
+    it.micro: DEBUG
+    org.axonframework: INFO
+    org.springframework.r2dbc: INFO
