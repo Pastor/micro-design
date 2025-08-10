@@ -68,7 +68,9 @@ public class TicketController {
                 .then(invoiceService.createInvoice(userId, ticketIds))
                 // Step 3: Redirect to payment page
                 .map(invoiceId -> {
-                    String paymentUrl = invoiceService.getPaymentUrl(invoiceId);
+                    long ticketPrice = 1000L; // keep in sync with InvoiceService
+                    long totalAmount = ticketIds.size() * ticketPrice;
+                    String paymentUrl = invoiceService.getPaymentUrl(invoiceId, userId, totalAmount);
                     log.info("Redirecting to payment page: {}", paymentUrl);
                     return ResponseEntity.status(302)
                             .location(URI.create(paymentUrl))

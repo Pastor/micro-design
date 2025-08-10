@@ -41,6 +41,23 @@ public class PaymentController {
 
     @PostMapping("/process")
     public Mono<ResponseEntity<Void>> processPayment(@RequestBody ProcessPaymentRequest request) {
+        return processPaymentInternal(request);
+    }
+
+    @GetMapping("/process")
+    public Mono<ResponseEntity<Void>> processPaymentGet(@RequestParam Long invoiceId,
+                                                        @RequestParam Long userId,
+                                                        @RequestParam Long totalAmount,
+                                                        @RequestParam(required = false, defaultValue = "CARD") String paymentMethod) {
+        ProcessPaymentRequest request = new ProcessPaymentRequest();
+        request.setInvoiceId(invoiceId);
+        request.setUserId(userId);
+        request.setTotalAmount(totalAmount);
+        request.setPaymentMethod(paymentMethod);
+        return processPaymentInternal(request);
+    }
+
+    private Mono<ResponseEntity<Void>> processPaymentInternal(ProcessPaymentRequest request) {
         log.info("Processing payment for invoice: {}", request.getInvoiceId());
 
         return invoiceRepository.findById(request.getInvoiceId())
@@ -54,24 +71,22 @@ public class PaymentController {
                         Payment payment = new Payment();
                         payment.setPrice(request.getTotalAmount());
                         return payment;
-                    }).flatMap(payment -> {
-                        return paymentRepository.save(payment)
-                                .flatMap(savedPayment -> {
-                                    // Create the command
-                                    ProcessPaymentCommand command = new ProcessPaymentCommand(
-                                            request.getInvoiceId(),
-                                            savedPayment.getId(),
-                                            request.getUserId(),
-                                            request.getTotalAmount(),
-                                            request.getPaymentMethod()
-                                    );
+                    }).flatMap(payment -> paymentRepository.save(payment)
+                            .flatMap(savedPayment -> {
+                                // Create the command
+                                ProcessPaymentCommand command = new ProcessPaymentCommand(
+                                        request.getInvoiceId(),
+                                        savedPayment.getId(),
+                                        request.getUserId(),
+                                        request.getTotalAmount(),
+                                        request.getPaymentMethod()
+                                );
 
-                                    // Send the command
-                                    CompletableFuture<Void> future = commandGateway.send(command);
-                                    return Mono.fromFuture(future)
-                                            .thenReturn(ResponseEntity.ok().<Void>build());
-                                });
-                    });
+                                // Send the command
+                                CompletableFuture<Void> future = commandGateway.send(command);
+                                return Mono.fromFuture(future)
+                                        .thenReturn(ResponseEntity.ok().<Void>build());
+                            }));
                 })
                 .onErrorResume(e -> {
                     log.error("Error processing payment: {}", e.getMessage());

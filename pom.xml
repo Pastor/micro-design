@@ -17,7 +17,7 @@
     <spring.boot.version>3.4.5</spring.boot.version>
   </properties>
   <modules>
-    <!-- module>dendro</module -->
+    <module>dendro</module>
     <module>tickets-service</module>
     <module>payments-service</module>
   </modules>

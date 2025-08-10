@@ -64,8 +64,11 @@ public class InvoiceService {
      * @param invoiceId the invoice ID
      * @return the payment URL
      */
-    public String getPaymentUrl(Long invoiceId) {
-        return paymentsServiceUrl + "/api/payments/process?invoiceId=" + invoiceId;
+    public String getPaymentUrl(Long invoiceId, Long userId, Long totalAmount) {
+        return paymentsServiceUrl + "/api/payments/process?invoiceId=" + invoiceId +
+                "&userId=" + userId +
+                "&totalAmount=" + totalAmount +
+                "&paymentMethod=CARD";
     }
 
     // Request and response classes matching the payments service API

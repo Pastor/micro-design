@@ -47,30 +47,31 @@ public class InvoiceController {
     public Mono<ResponseEntity<Invoice>> createInvoice(@RequestBody CreateInvoiceRequest request) {
         log.info("Creating invoice for user: {}", request.getUserId());
 
-        // Generate a new invoice ID
+        // Generate a new invoice with required defaults
         return Mono.fromCallable(() -> {
             Invoice invoice = new Invoice();
+            invoice.setStatus(Invoice.Status.CREATED.name());
+            invoice.setCreatedAt(java.time.LocalDateTime.now());
             return invoice;
-        }).flatMap(invoice -> {
-            return invoiceRepository.save(invoice)
-                    .flatMap(savedInvoice -> {
-                        // Create the command
-                        CreateInvoiceCommand command = new CreateInvoiceCommand(
-                                savedInvoice.getId(),
-                                request.getUserId(),
-                                request.getTicketItems().stream()
-                                        .map(item -> new CreateInvoiceCommand.TicketItem(
-                                                item.getTicketId(),
-                                                item.getPrice()))
-                                        .toList()
-                        );
+        }).flatMap(invoice -> invoiceRepository.save(invoice)
+                .flatMap(savedInvoice -> {
+                    // Create the command
+                    CreateInvoiceCommand command = new CreateInvoiceCommand(
+                            savedInvoice.getId(),
+                            request.getUserId(),
+                            request.getTicketItems().stream()
+                                    .map(item -> new CreateInvoiceCommand.TicketItem(
+                                            item.getTicketId(),
+                                            item.getPrice()))
+                                    .toList()
+                    );
 
-                        // Send the command
-                        CompletableFuture<Void> future = commandGateway.send(command);
-                        return Mono.fromFuture(future)
-                                .thenReturn(savedInvoice);
-                    });
-        }).map(ResponseEntity::ok);
+                    // Send the command
+                    CompletableFuture<Void> future = commandGateway.send(command);
+                    return Mono.fromFuture(future)
+                            .thenReturn(savedInvoice);
+                }))
+                .map(ResponseEntity::ok);
     }
 
     // Request classes
